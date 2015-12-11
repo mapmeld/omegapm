@@ -10,11 +10,11 @@ if (process.argv.length > 2) {
   var cliCommand = process.argv[2];
   if (cliCommand === 'status') {
     status();
+  } else if (cliCommand === 'sign') {
+    console.log('Command not yet implemented: omegapm sign');
   } else {
     console.log('Command not recognized: try - omegapm status');
   }
-  //else if (cliCommand === 'sign') {
-  //}
 } else if (process.argv.length) {
   console.log('Issue a command: for example - omegapm status');
 }
@@ -73,12 +73,17 @@ function status(callback) {
     }
 
     var verifiedByPackage = {};
+    var messageCount = 0;
     function checkPackage(i) {
       if (i >= signed.length) {
         if (callback) {
           return callback(null, verifiedByPackage);
         }
-        return console.log(prettyjson.render(verifiedByPackage));
+        if (messageCount) {
+          return console.log(prettyjson.render(verifiedByPackage));
+        } else {
+          return console.log('Out of ' + signed.length + ' packages with public keys (' + signed.join(', ') + '), none had messages.');
+        }
       }
 
       messages(signed[i], function (err, verified, unverified) {
@@ -90,6 +95,7 @@ function status(callback) {
         }
 
         verifiedByPackage[signed[i]] = verified;
+        messageCount++;
         return checkPackage(i + 1);
       });
     }

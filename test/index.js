@@ -9,7 +9,7 @@ describe('Check installed packages', function() {
     packages(function (err, signed, unsigned) {
       assert.equal(err, null);
       assert.equal(signed.length, 1); // this is preeti, a test with public key
-      assert.equal(unsigned.length, 98);
+      assert.equal(unsigned.length, 102);
       done();
     });
   });

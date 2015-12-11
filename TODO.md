@@ -1,3 +1,9 @@
+- install openpgp.js for some actual verifications
+- download and rewrite omegapm.org
+- make messages on omegapm for preeti
+- divide ruby and js entry on omegapm
 - activate HTTPS on omegapm.org
-- register omegapm on RubyGems
-- check nested dependencies
+- use direct call to gpg to make omegapm sign
+- use omegapm sign to standardize messages and prevent message being reused on other packages / versions
+- tie messages to particular version
+- reconnect with original OmegaPM people, NPM dude, JS devs, look for future JS conferences
