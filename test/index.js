@@ -9,6 +9,8 @@ describe('Check installed packages', function() {
     packages(function (err, signed, unsigned) {
       assert.equal(err, null);
       assert.equal(signed.length, 1); // this is preeti, a test with public key
+      assert.equal(signed[0].name, 'preeti');
+      assert.equal(signed[0].publicKey, 'node_modules/preeti/public_key.asc');
       assert.equal(unsigned.length, 102);
       done();
     });
@@ -17,9 +19,11 @@ describe('Check installed packages', function() {
 
 describe('Check messages', function() {
   it('should return one verified message', function(done) {
-    messages('omega-sqrt', function (err, verified, unverified) {
+    this.timeout(6000);
+    messages({ name: 'omega-sqrt', publicKey: 'test/test_key.asc' }, function (err, verified, unverified) {
       assert.equal(err, null);
       assert.equal(verified.length, 1);
+      assert.equal(unverified.length, 0);
       done();
     });
   });
@@ -27,7 +31,8 @@ describe('Check messages', function() {
 
 describe('Check status of preeti', function() {
   it('should return one verified message', function(done) {
-    messages('omega-sqrt', function (err, verified, unverified) {
+    this.timeout(6000);
+    messages({ name: 'omega-sqrt', publicKey: 'test/test_key.asc' }, function (err, verified, unverified) {
       assert.equal(err, null);
       assert.equal(verified.length, 1);
       done();

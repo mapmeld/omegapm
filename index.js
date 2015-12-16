@@ -4,6 +4,7 @@ var fs = require('fs');
 var path = require('path');
 var readInstalled = require('read-installed');
 var request = require('request');
+var openpgp = require('openpgp');
 var prettyjson = require('prettyjson');
 
 if (process.argv.length > 2) {
@@ -38,9 +39,14 @@ function packages(callback) {
     pkgNames.map(function(name) {
       var pkg = data.dependencies[name] || data.devDependencies[name];
       if (pkg.publicKey && fs.existsSync(path.join(path.join('node_modules', name), pkg.publicKey))) {
-        withKeys.push(name);
+        withKeys.push({
+          name: name,
+          publicKey: path.join(path.join('node_modules', name), pkg.publicKey)
+        });
       } else {
-        withoutKeys.push(name);
+        withoutKeys.push({
+          name: name
+        });
       }
     });
 
@@ -49,11 +55,51 @@ function packages(callback) {
 }
 
 function messages(package, callback) {
-  request('http://omegapm.org/messages/' + package, function (err, response, body) {
+  if (!package || !package.name) {
+    throw 'package has no name';
+  }
+  if (!package.publicKey || !fs.existsSync(package.publicKey)) {
+    throw 'package has no publicKey set, or no publicKey file exists';
+  }
+  request('http://omegapm.org/messages/' + package.name, function (err, response, body) {
     if (err) {
-      return callback(err);
+      return callback(err, [], []);
     }
-    callback(null, JSON.parse(body), []);
+
+    var allMessages = JSON.parse(body);
+    var verified = [];
+    var unverified = [];
+
+    fs.readFile(package.publicKey, {encoding: 'utf-8'}, function(err, pubKeyRead) {
+      if (err) {
+        return callback(err, [], []);
+      }
+
+      function verifyMessage(m) {
+        if (m >= allMessages.length) {
+          return callback(null, verified, unverified);
+        }
+
+        var clearMessage = openpgp.cleartext.readArmored(allMessages[m]);
+        var pubKey = openpgp.key.readArmored(pubKeyRead).keys[0];
+
+        openpgp.verifyClearSignedMessage(pubKey, clearMessage)
+          .then(function(sigCheck) {
+            if (sigCheck.signatures[0].valid) {
+              verified.push(allMessages[m]);
+            } else {
+              unverified.push(allMessages[m]);
+            }
+            verifyMessage(m + 1);
+          })
+          .catch(function(err) {
+            if (err) {
+              throw err;
+            }
+          });
+      }
+      verifyMessage(0);
+    });
   });
 }
 
@@ -92,6 +138,10 @@ function status(callback) {
             return callback(err, {});
           }
           throw err;
+        }
+
+        if (unverified.length) {
+          console.log('some unverified messages for ' + signed[i]);
         }
 
         verifiedByPackage[signed[i]] = verified;

@@ -1,4 +1,3 @@
-- install openpgp.js for some actual verifications
 - download and rewrite omegapm.org
 - make messages on omegapm for preeti
 - divide ruby and js entry on omegapm
