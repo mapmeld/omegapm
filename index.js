@@ -61,45 +61,45 @@ function messages(package, callback) {
   if (!package.publicKey || !fs.existsSync(package.publicKey)) {
     throw 'package has no publicKey set, or no publicKey file exists';
   }
+
   request('http://omegapm.org/messages/' + package.name, function (err, response, body) {
     if (err) {
       return callback(err, [], []);
     }
 
     var allMessages = JSON.parse(body);
+    if (!allMessages.length || (allMessages.length === 1 && allMessages[0] === "couldn't find that package =-(")) {
+      return callback(null, [], []);
+    }
+
+    var pubKeyRead = fs.readFileSync(package.publicKey, { encoding: 'utf-8' }) + "";
+    var pubKey = openpgp.key.readArmored(pubKeyRead).keys[0];
     var verified = [];
     var unverified = [];
 
-    fs.readFile(package.publicKey, {encoding: 'utf-8'}, function(err, pubKeyRead) {
-      if (err) {
-        return callback(err, [], []);
+    function verifyMessage(m) {
+      if (m >= allMessages.length) {
+        return callback(null, verified, unverified);
       }
 
-      function verifyMessage(m) {
-        if (m >= allMessages.length) {
-          return callback(null, verified, unverified);
-        }
+      var clearMessage = openpgp.cleartext.readArmored(allMessages[m]);
 
-        var clearMessage = openpgp.cleartext.readArmored(allMessages[m]);
-        var pubKey = openpgp.key.readArmored(pubKeyRead).keys[0];
-
-        openpgp.verifyClearSignedMessage(pubKey, clearMessage)
-          .then(function(sigCheck) {
-            if (sigCheck.signatures[0].valid) {
-              verified.push(allMessages[m]);
-            } else {
-              unverified.push(allMessages[m]);
-            }
-            verifyMessage(m + 1);
-          })
-          .catch(function(err) {
-            if (err) {
-              throw err;
-            }
-          });
-      }
-      verifyMessage(0);
-    });
+      openpgp.verifyClearSignedMessage(pubKey, clearMessage)
+        .then(function(sigCheck) {
+          if (sigCheck.signatures[0].valid) {
+            verified.push(allMessages[m]);
+          } else {
+            unverified.push(allMessages[m]);
+          }
+          verifyMessage(m + 1);
+        })
+        .catch(function(err) {
+          if (err) {
+            throw err;
+          }
+        });
+    }
+    verifyMessage(0);
   });
 }
 
@@ -141,10 +141,10 @@ function status(callback) {
         }
 
         if (unverified.length) {
-          console.log('some unverified messages for ' + signed[i]);
+          console.log('some unverified messages for ' + signed[i].name);
         }
 
-        verifiedByPackage[signed[i]] = verified;
+        verifiedByPackage[signed[i].name] = verified;
         messageCount++;
         return checkPackage(i + 1);
       });
