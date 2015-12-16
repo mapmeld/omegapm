@@ -1,12 +1,18 @@
 #! /usr/bin/env node
 
+// core Node packages
 var fs = require('fs');
 var path = require('path');
+
+// from NPM
 var readInstalled = require('read-installed');
+
+// PGP and other accessories
 var request = require('request');
 var openpgp = require('openpgp');
 var prettyjson = require('prettyjson');
 
+// command line request dispatcher
 if (process.argv.length > 2) {
   var cliCommand = process.argv[2];
   if (cliCommand === 'status') {
@@ -22,11 +28,12 @@ if (process.argv.length > 2) {
 
 function packages(callback) {
   readInstalled('.', {}, function (err, data) {
-    // data.dependencies
     if (err) {
       return callback(err, [], []);
     }
 
+    // data.dependencies and data.devDependencies returned
+    // narrow to unique names
     function onlyUnique(value, index, self) {
       return self.indexOf(value) === index;
     }
@@ -34,6 +41,7 @@ function packages(callback) {
     data.devDependencies = data.devDependencies || {};
     var pkgNames = Object.keys(data.dependencies).concat(Object.keys(data.devDependencies)).filter(onlyUnique);
 
+    // sort the packages by whether a publicKey was specified in package.json, and that filename exists
     var withKeys = [];
     var withoutKeys = [];
     pkgNames.map(function(name) {
@@ -55,6 +63,7 @@ function packages(callback) {
 }
 
 function messages(package, callback) {
+  // check for common errors
   if (!package || !package.name) {
     throw 'package has no name';
   }
@@ -62,28 +71,34 @@ function messages(package, callback) {
     throw 'package has no publicKey set, or no publicKey file exists';
   }
 
+  // call OmegaPM website
   request('http://omegapm.org/messages/' + package.name, function (err, response, body) {
     if (err) {
       return callback(err, [], []);
     }
 
     var allMessages = JSON.parse(body);
+
+    // no messages or empty-message message only
     if (!allMessages.length || (allMessages.length === 1 && allMessages[0] === "couldn't find that package =-(")) {
       return callback(null, [], []);
     }
 
+    // if this module has any messages, read the public key now
     var pubKeyRead = fs.readFileSync(package.publicKey, { encoding: 'utf-8' }) + "";
     var pubKey = openpgp.key.readArmored(pubKeyRead).keys[0];
     var verified = [];
     var unverified = [];
 
+    // iterate through the messages to verify which are signed
     function verifyMessage(m) {
       if (m >= allMessages.length) {
+        // finished reading messages - run the callback
         return callback(null, verified, unverified);
       }
 
+      // use OpenPGP.js to check whether message was signed by the public key
       var clearMessage = openpgp.cleartext.readArmored(allMessages[m]);
-
       openpgp.verifyClearSignedMessage(pubKey, clearMessage)
         .then(function(sigCheck) {
           if (sigCheck.signatures[0].valid) {
@@ -104,6 +119,7 @@ function messages(package, callback) {
 }
 
 function status(callback) {
+  // callback is optional here, means we are using it programmatically and not with CLI
   packages(function (err, signed, unsigned) {
     if (err) {
       if (callback) {
@@ -111,6 +127,8 @@ function status(callback) {
       }
       throw err;
     }
+
+    // no dependencies with public keys
     if (!signed.length) {
       if (callback) {
         return callback('none of your dependencies have a public key, so they cannot be used with OmegaPM', {});
@@ -118,6 +136,7 @@ function status(callback) {
       return console.log('none of your dependencies have a public key, so they cannot be used with OmegaPM');
     }
 
+    // iterate async through package list
     var verifiedByPackage = {};
     var messageCount = 0;
     function checkPackage(i) {
