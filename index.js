@@ -72,7 +72,7 @@ function messages(package, callback) {
   }
 
   // call OmegaPM website
-  request('http://omegapm.org/messages/' + package.name, function (err, response, body) {
+  request('https://omegapm.org/messages/' + package.name, function (err, response, body) {
     if (err) {
       return callback(err, [], []);
     }
