@@ -16,7 +16,7 @@ describe('Check installed packages', function() {
       assert.equal(signed[0].publicKey, 'node_modules/preeti/public_key.asc');
 
       // all other modules without public keys
-      assert.equal(unsigned.length, 102);
+      assert.equal(unsigned.length, 144);
       done();
     });
   });
