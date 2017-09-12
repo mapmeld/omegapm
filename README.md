@@ -1,5 +1,7 @@
 # OmegaPM (JavaScript)
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/mapmeld/omegapm.svg)](https://greenkeeper.io/)
+
 OmegaPM is a secure channel to communicate with package developers. It answers the question: "do I need to update any of my dependencies?" in cases when there are widespread security issues, deprecated packages, or other essential updates.
 
 For the Ruby gem source code, see <a href="https://github.com/mapmeld/omegapm-ruby">omegapm-ruby</a>.
